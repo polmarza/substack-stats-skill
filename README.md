@@ -1,15 +1,37 @@
 # Substack stats skill
 
-A Claude Code skill that builds a local analytics dashboard for **your own**
-Substack publications: views, opens, open rate, clicks, reactions, comments,
-attributed signups, growth sources, per-post detail, and a side-by-side
-comparison across all your publications.
+> Ask Claude how your Substack is doing, and get a real answer built from your
+> own numbers — locally, with no extension and no third-party service.
 
-Substack has no public API. Its writer dashboard talks to a private JSON API
-under `/api/v1/…` that works with the logged-in browser session. This skill
-drives that API from Claude's integrated browser **with your own session**,
-saves the data locally, and builds a single self-contained `dashboard.html`.
-Nothing is sent anywhere.
+## About
+
+Substack shows writers plenty of numbers and very little analysis. The numbers
+live behind seven dashboard tabs, reset every time you change the date range,
+and can't be compared across publications or asked a question. This skill
+closes that gap.
+
+It is a Claude Code skill that reads the **private JSON API** Substack's own
+writer dashboard calls — the one under `/api/v1/…`, authenticated by nothing
+more than the session already sitting in your browser — and turns it into two
+things:
+
+- **A dashboard you own.** One self-contained `dashboard.html`: views, opens,
+  open rate, clicks, reactions, comments, attributed signups, growth sources,
+  subscribers by country, per-post detail with traffic sources and most-clicked
+  links, and a side-by-side comparison across every publication you run.
+- **Numbers Claude can reason over.** The collected datasets are plain JSON, so
+  you can ask follow-up questions the dashboard doesn't have a chart for —
+  which topics actually convert, whether readers *finish* your posts, which
+  publications share your audience.
+
+Substack has no public API and no documentation for this one, so the repo also
+ships [`references/endpoints.md`](references/endpoints.md): a catalogue of over
+120 routes with their parameters, response shapes and the question each one
+answers — 65 of them verified call-by-call against a live session. A dozen of
+the most useful analytics routes in it appear in no other public reference.
+
+Nothing is sent anywhere. Claude never handles your password or your cookie —
+you log in yourself, and the session does the rest.
 
 ## Install
 
@@ -56,8 +78,9 @@ fits how you work.
 
 This uses an **undocumented** API. Substack can change it without notice.
 Treat this as a working tool, not a supported product. Requests are paced to
-stay well within limits. See [`references/endpoints.md`](references/endpoints.md)
-for the endpoints used.
+stay well within limits. [`references/endpoints.md`](references/endpoints.md)
+documents every route, records when each was last verified, and explains how to
+re-capture the current ones from the dashboard when Substack changes something.
 
 ## License
 

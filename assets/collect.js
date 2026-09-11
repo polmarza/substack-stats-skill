@@ -28,10 +28,44 @@
   ds.subscribers_timeseries = await get('/api/v1/publication/stats/emails/timeseries');
   ds.growth_sources = await get(`/api/v1/publication/stats/growth/sources?from_date=${yearAgo}&to_date=${today}&order_by=users&order_direction=desc`);
   ds.growth_events = await get(`/api/v1/publication/stats/growth/events?from_date=${yearAgo}&to_date=${today}`);
-  ds.network_attribution = await get('/api/v1/publication/stats/network_attribution');
+  // time_window e is_subscribed son obligatorios: sin ellos la ruta responde 400.
+  ds.network_attribution = await get('/api/v1/publication/stats/network_attribution?time_window=90%20days&is_subscribed=false');
   // Suscriptores por país (códigos ISO 3166-1 alfa-2) y su total.
   ds.geo = await get('/api/v1/publication/stats/audience_insights/location?metric=free%20signups&granularity=global');
   ds.geo_total = await get('/api/v1/publication/stats/audience_insights/location/total');
+
+  // Tabla por post mucho más rica que post_management/published (~50 campos frente
+  // a 27): incluye subscribers_finished_post (lectura completa), unique_opens_day7
+  // y day28, restacks, el embudo de pago desglosado y section_name/tags ya cruzados.
+  // Ojo: limit tiene tope 20 — valores mayores responden 400.
+  {
+    const rows = []; let off = 0, tot = 0;
+    do {
+      const r = await get(`/api/v1/publication/stats/email_stats?offset=${off}&limit=20&order_by=post_date&order_direction=desc`);
+      if (r.__status) { ds.email_stats = { rows, total: tot, __status: r.__status }; break; }
+      const page = r.rows || [];
+      tot = r.total || 0; rows.push(...page); off += 20;
+      ds.email_stats = { rows, total: tot };
+      if (!page.length) break; // página vacía: no seguir paginando contra un total inflado
+      await sleep(300);
+    } while (rows.length < tot && off < 2000);
+  }
+  // Publicaciones que comparten lectores con esta (% de solape). El tope es 25, y
+  // cada fila trae el objeto publicación completo (144 campos), así que se recorta
+  // a lo identificativo para no inflar el dataset medio mega por publicación.
+  const overlap = await get('/api/v1/publication/stats/audience_insights/overlap?limit=25');
+  ds.audience_overlap = Array.isArray(overlap)
+    ? overlap.map(({ percentOverlap, pub }) => ({
+        percentOverlap,
+        id: pub && pub.id,
+        name: pub && pub.name,
+        subdomain: pub && pub.subdomain,
+        custom_domain: pub && pub.custom_domain,
+        logo_url: pub && pub.logo_url,
+        author_name: pub && pub.author_name,
+        language: pub && pub.language,
+      }))
+    : overlap;
   ds.details = {};
   for (const p of ds.posts) {
     const d = await get(`/api/v1/post_management/detail/${p.id}?offset=0&limit=1`);
@@ -45,5 +79,7 @@
   a.href = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
   a.download = `substack_${subdomain}.json`;
   document.body.appendChild(a); a.click(); a.remove();
-  return { subdomain, posts: ds.posts.length, subscribers: ds.summary && ds.summary.totalEmail, bytes: body.length };
+  return { subdomain, posts: ds.posts.length, email_stats: (ds.email_stats && ds.email_stats.rows || []).length,
+           overlap: (ds.audience_overlap || []).length,
+           subscribers: ds.summary && ds.summary.totalEmail, bytes: body.length };
 })();
